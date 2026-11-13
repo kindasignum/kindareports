@@ -58,8 +58,7 @@
     /** GET текста: через GM_xmlhttpRequest (обходит CORS), иначе через fetch. */
     request(url, timeout = 8000) {
       return new Promise((resolve, reject) => {
-        const gm = typeof GM_xmlhttpRequest === 'function' ? GM_xmlhttpRequest
-          : (typeof GM !== 'undefined' && GM.xmlHttpRequest) || null;
+        const gm = null; // временно: отключаем GM_xmlhttpRequest для проверки
         if (gm) {
           gm({
             method: 'GET', url, timeout,
