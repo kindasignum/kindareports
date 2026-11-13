@@ -50,7 +50,7 @@
   // Откуда брать json-файлы. Можно переопределить на время разработки:
   //   CWReports.storage.set('dataBase', 'http://localhost:8000/data/')
   //   CWReports.storage.remove('dataBase')   // вернуть значение по умолчанию
-  const DEFAULT_DATA_BASE = 'https://raw.githubusercontent.com/YOUR_USER/catwar-reports/main/data/';
+  const DEFAULT_DATA_BASE = 'https://raw.githubusercontent.com/kindasignum/kindareports/main/src/modules/';
 
   const data = {
     baseUrl: () => storage.get('dataBase') || DEFAULT_DATA_BASE,
