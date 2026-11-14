@@ -3,6 +3,7 @@
  *  - кнопка (+) в тултипе игрока: добавить / убрать из списка отчёта
  *  - список сохраняется в localStorage (cwr:players)
  *  - кнопка «👥 Игроки (N)» в верхней панели: просмотр, удаление, очистка
+ *  - переключатель в окне «Игроки»: показывать ли кнопки (+) в Игровой (cwr:playersEnabled)
  *  - API для модулей блогов: CWReports.players
  */
 (function () {
@@ -12,6 +13,7 @@
 
   const { el, storage } = R;
   const KEY = 'players';
+const ENABLED_KEY = 'playersEnabled';
 
   /* ---------- API списка игроков ---------- */
   const listeners = new Set();
@@ -33,13 +35,16 @@
       players._emit();
     },
     clear() { storage.set(KEY, []); players._emit(); },
+    /** Включено ли добавление игроков (кнопки «+» в Игровой). По умолчанию — да. */
+    enabled: () => storage.get(ENABLED_KEY, true) !== false,
+    setEnabled(v) { storage.set(ENABLED_KEY, !!v); players._emit(); },
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     _emit() { listeners.forEach(fn => { try { fn(); } catch (e) { console.error(e); } }); },
   };
   R.players = players;
 
   // Синхронизация между вкладками
-  addEventListener('storage', e => { if (e.key === 'cwr:' + KEY) players._emit(); });
+  addEventListener('storage', e => { if (e.key === 'cwr:' + KEY || e.key === 'cwr:' + ENABLED_KEY) players._emit(); });
 
   /* ---------- стили ---------- */
   const CSS = `
@@ -56,6 +61,7 @@
   .cwr-plist .cwr-pname a{color:inherit}
   .cwr-plist .cwr-pid{opacity:.7;font-size:.85em}
   .cwr-plist .cwr-del{width:22px;height:22px;padding:0;border:0;border-radius:50%;background:var(--cwr-danger,#B2241F);color:#fff;font-weight:bold;cursor:pointer}
+  .cwr-toggle{display:flex;align-items:center;gap:6px;margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid rgba(0,0,0,.35);font-weight:bold;cursor:pointer}
   .cwr-empty{opacity:.7;text-align:center;padding:12px 0}
   `;
   function injectStyle() {
@@ -83,7 +89,7 @@
    * не к клетке, а к ID из ссылки в тултипе — и читается заново при каждом синке и клике.
    */
   function syncTooltip(tip) {
-    const cat = parseCat(tip);
+    const cat = players.enabled() ? parseCat(tip) : null;
     let btn = tip.querySelector('.cwr-add');
     if (!cat) { if (btn) btn.remove(); return; }
     if (!btn) {
@@ -115,13 +121,19 @@
     if (tip) syncTooltip(tip);
   }, true);
 
+  /** Перерисовывает состояние кнопок; при выключенном режиме убирает их все. */
   function refreshButtons() {
+    if (!players.enabled()) { document.querySelectorAll('.cwr-add').forEach(b => b.remove()); return; }
+    mountButtons();
     document.querySelectorAll('.cwr-add').forEach(paintButton);
   }
 
   /* ---------- кнопка в верхней панели и окно списка ---------- */
   function openList() {
     const box = el('div');
+    const toggle = el('input', { type: 'checkbox', id: 'cwr-enabled', onchange: e => players.setEnabled(e.target.checked) });
+    toggle.checked = players.enabled();
+    const toggleRow = el('label', { class: 'cwr-toggle', for: 'cwr-enabled' }, [toggle, ' Добавление игроков в отчёт (кнопки «+» в Игровой)']);
     const render = () => {
       const list = players.list();
       box.replaceChildren(
@@ -139,8 +151,8 @@
       );
     };
     render();
-    const off = players.onChange(render);
-    const close = R.ui.openModal({ title: 'Игроки для отчёта', body: box, applyLabel: 'Закрыть', onApply() {} });
+    const off = players.onChange(() => { toggle.checked = players.enabled(); render(); });
+    const close = R.ui.openModal({ title: 'Игроки для отчёта', body: [toggleRow, box], applyLabel: 'Закрыть', onApply() {} });
     // отписка при закрытии окна
     const watcher = new MutationObserver(() => {
       if (!document.body.contains(box)) { off(); watcher.disconnect(); }
