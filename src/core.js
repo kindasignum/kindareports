@@ -9,7 +9,7 @@
   'use strict';
   if (global.CWReports) return;
 
-  const VERSION = '0.1.7';
+  const VERSION = '0.1.8';
   const log = (...a) => console.log('[CWReports]', ...a);
   // Окно самой страницы: при @grant GM_* скрипт работает в песочнице, и глобалы сайта (my) лежат в unsafeWindow.
   const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : global;
