@@ -77,24 +77,43 @@
     btn.title = added ? 'В списке отчёта — нажмите, чтобы убрать' : 'Добавить в отчёт';
   }
 
-  function mountButtons() {
-    document.querySelectorAll('span.cat_tooltip').forEach(tip => {
-      if (tip.querySelector('.cwr-add')) return;
-      const cat = parseCat(tip);
-      if (!cat) return;
-      const btn = el('button', { type: 'button', class: 'cwr-add', 'data-id': cat.id });
-      const stop = e => { e.stopPropagation(); };
-      btn.addEventListener('mousedown', stop);
+  /**
+   * Синхронизирует кнопку тултипа с тем котом, который в нём лежит СЕЙЧАС.
+   * Vue переиспользует клетки (td.cage) между локациями, поэтому привязка идёт
+   * не к клетке, а к ID из ссылки в тултипе — и читается заново при каждом синке и клике.
+   */
+  function syncTooltip(tip) {
+    const cat = parseCat(tip);
+    let btn = tip.querySelector('.cwr-add');
+    if (!cat) { if (btn) btn.remove(); return; }
+    if (!btn) {
+      btn = el('button', { type: 'button', class: 'cwr-add' });
+      btn.addEventListener('mousedown', e => e.stopPropagation());
       btn.addEventListener('click', e => {
         e.preventDefault(); e.stopPropagation();
-        if (players.has(cat.id)) players.remove(cat.id);
-        else players.add(cat.id, cat.name);
+        const cur = parseCat(tip); // актуальный кот на момент клика
+        if (!cur) return;
+        if (players.has(cur.id)) players.remove(cur.id);
+        else players.add(cur.id, cur.name);
       });
-      paintButton(btn);
       const u = tip.querySelector('u');
       if (u) u.after(btn); else tip.prepend(btn);
-    });
+    }
+    if (btn.dataset.id !== cat.id) btn.dataset.id = cat.id;
+    paintButton(btn);
   }
+
+  function mountButtons() {
+    document.querySelectorAll('span.cat_tooltip').forEach(syncTooltip);
+  }
+
+  // Страховка: ссылка в тултипе могла смениться без изменения структуры DOM
+  // (MutationObserver ядра этого не увидит) — синхронизируем при наведении на кота.
+  document.addEventListener('mouseover', e => {
+    const cat = e.target.closest && e.target.closest('span.cat');
+    const tip = cat && cat.querySelector('.cat_tooltip');
+    if (tip) syncTooltip(tip);
+  }, true);
 
   function refreshButtons() {
     document.querySelectorAll('.cwr-add').forEach(paintButton);
